@@ -3,70 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Persistent Monitoring</title>
+    <title>Admin - Full Control Panel</title>
     <script src="https://cdn.jsdelivr.net/npm/appwrite@11.0.0"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root { --accent: #00ff00; --bg: #050505; --danger: #ff4d4d; }
         body { background: var(--bg); color: white; font-family: sans-serif; display: flex; justify-content: center; padding: 20px; margin: 0; }
-        .container { width: 100%; max-width: 420px; text-align: center; position: relative; }
+        .container { width: 100%; max-width: 420px; text-align: center; }
         .card { background: #111; border-radius: 20px; padding: 25px; border: 1px solid var(--accent); margin-bottom: 20px; box-shadow: 0 0 15px rgba(0,255,0,0.1); }
-        .otp-box { background: #000; border-radius: 12px; padding: 30px; border: 1px solid #222; font-size: 50px; color: var(--accent); font-weight: bold; margin: 20px 0; letter-spacing: 5px; }
+        .otp-box { background: #000; border-radius: 12px; padding: 20px; border: 1px solid #222; margin: 20px 0; }
+        #otp-display { font-size: 50px; color: var(--accent); font-weight: bold; letter-spacing: 5px; display: block; }
+        #sender-display { font-size: 14px; color: #888; margin-top: 10px; font-weight: bold; text-transform: uppercase; }
         .btn { width: 100%; padding: 15px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; margin-bottom: 10px; }
         .btn-login { background: #4285f4; color: white; }
         .btn-update { background: #00f2ff; color: #000; }
-        .status { font-size: 13px; margin-bottom: 15px; color: #ffa500; font-weight: bold; }
         input { width: 100%; padding: 12px; margin: 10px 0; background: #000; border: 1px solid #333; color: white; border-radius: 8px; box-sizing: border-box; }
+        
+        /* Email List Area */
         .history-box { text-align: left; background: #000; border-radius: 10px; padding: 10px; max-height: 250px; overflow-y: auto; border: 1px solid #222; margin-top: 10px; }
         .mail-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #222; font-size: 14px; color: #ccc; }
         .del-btn { color: var(--danger); font-weight: bold; cursor: pointer; padding: 5px 10px; border-radius: 5px; background: rgba(255, 77, 77, 0.1); }
         
-        /* Custom Notification Styles */
-        #toast { 
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-            background: #222; border: 1px solid var(--accent); color: white;
-            padding: 12px 25px; border-radius: 10px; font-size: 14px;
-            display: none; z-index: 1000; box-shadow: 0 5px 20px rgba(0,0,0,0.5);
-        }
-        #confirm-modal {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 2000;
-        }
-        .modal-content { background: #111; padding: 25px; border-radius: 20px; border: 1px solid #333; width: 80%; max-width: 300px; }
+        /* Custom UI Notification */
+        #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #222; border: 1px solid var(--accent); color: white; padding: 12px 25px; border-radius: 10px; display: none; z-index: 1000; }
     </style>
 </head>
 <body>
 
-<div id="toast">Message here</div>
-
-<div id="confirm-modal">
-    <div class="modal-content">
-        <p id="modal-msg" style="margin-bottom: 20px;">Are you sure?</p>
-        <button class="btn" style="background: var(--danger); color: white;" id="modal-ok">OK</button>
-        <button class="btn" style="background: #333; color: white; margin-bottom: 0;" onclick="closeModal()">CANCEL</button>
-    </div>
-</div>
+<div id="toast">Message</div>
 
 <div class="container">
     <div class="card">
-        <div style="font-size: 12px; color: #666; letter-spacing: 1px;">GMAIL MONITORING SYSTEM</div>
-        <div id="otp-display" class="otp-box">----</div>
-        <div id="status" class="status">INITIALIZING...</div>
+        <div style="font-size: 11px; color: #666; letter-spacing: 1px;">GMAIL MONITORING SYSTEM</div>
+        <div class="otp-box">
+            <span id="otp-display">----</span>
+            <div id="sender-display">WAITING FOR CODE...</div>
+        </div>
+        <div id="status" style="font-size: 12px; margin-bottom: 15px; color: #ffa500; font-weight: bold;">INITIALIZING...</div>
         <button class="btn btn-login" onclick="handleAuthClick()">LOGIN WITH GMAIL</button>
-        <button class="btn" style="background: #222; color: #888; font-size: 12px;" onclick="resetOTP()">RESET OTP TO 0000</button>
+        <button class="btn" style="background: #222; color: #888; font-size: 12px;" onclick="resetOTP()">RESET TO 0000</button>
     </div>
 
     <div class="card">
-        <div style="font-size: 12px; color: #666; text-align: left; margin-bottom: 5px;">MANAGE PUBLIC EMAILS</div>
+        <div style="font-size: 11px; color: #666; text-align: left;">ADD ACTIVE EMAIL</div>
         <input type="email" id="emailInput" placeholder="example@gmail.com">
         <button class="btn btn-update" onclick="addEmailToHistory()">ADD EMAIL TO LIST</button>
         
         <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
             <span style="font-size: 11px; color: #888; font-weight: bold;">ACTIVE LIST</span>
-            <span style="font-size: 11px; color: var(--danger); cursor: pointer;" onclick="askClearAll()">CLEAR ALL</span>
+            <span style="font-size: 11px; color: var(--danger); cursor: pointer;" onclick="clearAllMails()">CLEAR ALL</span>
         </div>
         <div id="history-box" class="history-box">
-            <div style="color: #444; font-size: 12px; text-align: center; padding: 10px;">Fetching emails...</div>
+            <div style="color: #444; font-size: 12px; text-align: center; padding: 10px;">Fetching...</div>
         </div>
     </div>
 </div>
@@ -77,37 +65,17 @@
     const DB_ID = '6990a481001f67225b44';
     const COL_ID = 'user_messages';
     const CLIENT_ID = '269841601327-va8dbv76f4p62qpdea59p3sum1tkpbhs.apps.googleusercontent.com';
-    let tokenClient;
-    let accessToken = localStorage.getItem('gmail_token');
+    let tokenClient, accessToken = localStorage.getItem('gmail_token');
 
-    // Notification Helper
     function showToast(msg) {
-        const t = document.getElementById('toast');
-        t.innerText = msg;
-        t.style.display = 'block';
-        setTimeout(() => { t.style.display = 'none'; }, 2500);
+        const t = document.getElementById('toast'); t.innerText = msg; t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 2500);
     }
-
-    // Modal Helpers
-    let modalAction = null;
-    function openModal(msg, action) {
-        document.getElementById('modal-msg').innerText = msg;
-        document.getElementById('confirm-modal').style.display = 'flex';
-        modalAction = action;
-    }
-    function closeModal() { document.getElementById('confirm-modal').style.display = 'none'; }
-    document.getElementById('modal-ok').onclick = () => { if(modalAction) modalAction(); closeModal(); };
 
     function initClient() {
         tokenClient = google.accounts.oauth2.initTokenClient({
-            client_id: CLIENT_ID,
-            scope: 'https://www.googleapis.com/auth/gmail.readonly',
-            callback: (res) => {
-                accessToken = res.access_token;
-                localStorage.setItem('gmail_token', accessToken);
-                updateStatus(true);
-                startMonitoring();
-            },
+            client_id: CLIENT_ID, scope: 'https://www.googleapis.com/auth/gmail.readonly',
+            callback: (res) => { accessToken = res.access_token; localStorage.setItem('gmail_token', accessToken); updateStatus(true); startMonitoring(); }
         });
         if (accessToken) { updateStatus(true); startMonitoring(); } else { updateStatus(false); }
         fetchEmails(); 
@@ -115,77 +83,64 @@
 
     function updateStatus(active) {
         const el = document.getElementById('status');
-        if (active) { el.innerText = "● MONITORING ACTIVE ✅"; el.style.color = "#00ff00"; }
-        else { el.innerText = "GOOGLE API READY ✅ (LOGIN REQUIRED)"; el.style.color = "#ffa500"; }
+        el.innerText = active ? "● MONITORING ACTIVE ✅" : "GOOGLE API READY ✅ (LOGIN REQUIRED)";
+        el.style.color = active ? "#00ff00" : "#ffa500";
     }
 
-    function handleAuthClick() { tokenClient.requestAccessToken({prompt: 'consent'}); }
-
     async function startMonitoring() {
-        const checkInterval = setInterval(async () => {
+        setInterval(async () => {
             if (!accessToken) return;
             try {
                 const res = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=1', {
                     headers: { 'Authorization': `Bearer ${accessToken}` }
                 });
-                if (res.status === 401) {
-                    localStorage.removeItem('gmail_token'); accessToken = null;
-                    updateStatus(false); clearInterval(checkInterval); return;
-                }
+                if (res.status === 401) { localStorage.removeItem('gmail_token'); accessToken = null; updateStatus(false); return; }
                 const data = await res.json();
                 if (data.messages && data.messages.length > 0) {
                     const msgRes = await fetch(`https://www.googleapis.com/gmail/v1/users/me/messages/${data.messages[0].id}`, {
                         headers: { 'Authorization': `Bearer ${accessToken}` }
                     });
                     const msg = await msgRes.json();
+                    const fromHeader = msg.payload.headers.find(h => h.name === 'From').value;
+                    const sender = fromHeader.split('<')[0].replace(/"/g, '').trim();
                     const otpMatch = msg.snippet.match(/\b\d{4,6}\b/);
                     if (otpMatch) {
                         const code = otpMatch[0];
                         document.getElementById('otp-display').innerText = code;
-                        try {
-                            await databases.updateDocument(DB_ID, COL_ID, 'live_sync', { current_otp: code });
-                        } catch (err) {
-                            if (err.code === 404) await databases.createDocument(DB_ID, COL_ID, 'live_sync', { current_otp: code });
-                        }
+                        document.getElementById('sender-display').innerText = "FROM: " + sender;
+                        await databases.updateDocument(DB_ID, COL_ID, 'live_sync', { current_otp: code, sender_name: sender });
                     }
                 }
             } catch (e) { }
         }, 3000);
     }
 
+    // Email List ကို ဆွဲထုတ်ပြခြင်း
     async function fetchEmails() {
         try {
             const res = await databases.listDocuments(DB_ID, COL_ID, [Appwrite.Query.orderDesc('$createdAt')]);
             let html = "";
             res.documents.forEach(doc => {
                 if(doc.current_otp && doc.current_otp.includes("@")) {
-                    html += `<div class="mail-item"><span>${doc.current_otp}</span><span class="del-btn" onclick="askDelete('${doc.$id}')">DELETE</span></div>`;
+                    html += `<div class="mail-item"><span>${doc.current_otp}</span><span class="del-btn" onclick="deleteEmail('${doc.$id}')">DELETE</span></div>`;
                 }
             });
-            document.getElementById('history-box').innerHTML = html || "<div style='color:#444; font-size:12px; padding:10px;'>No emails in list.</div>";
+            document.getElementById('history-box').innerHTML = html || "<div style='color:#444; font-size:12px; padding:10px;'>Empty</div>";
         } catch (e) { }
     }
 
-    function askDelete(docId) { openModal("Delete this email?", () => executeDelete(docId)); }
-    async function executeDelete(docId) {
+    // Email တစ်ခုချင်းစီကို ဖျက်ခြင်း
+    async function deleteEmail(docId) {
         try { await databases.deleteDocument(DB_ID, COL_ID, docId); fetchEmails(); showToast("Email Deleted!"); } 
-        catch (e) { showToast("Error deleting email"); }
+        catch (e) { showToast("Error!"); }
     }
 
-    function askClearAll() { openModal("Clear all public emails?", executeClearAll); }
-    async function executeClearAll() {
+    // Email အားလုံးကို ရှင်းပစ်ခြင်း
+    async function clearAllMails() {
         try {
             const res = await databases.listDocuments(DB_ID, COL_ID);
             for (let doc of res.documents) { if(doc.$id !== 'live_sync') await databases.deleteDocument(DB_ID, COL_ID, doc.$id); }
-            fetchEmails(); showToast("History Cleared!");
-        } catch (e) { }
-    }
-
-    async function resetOTP() {
-        try {
-            await databases.updateDocument(DB_ID, COL_ID, 'live_sync', { current_otp: "0000" });
-            document.getElementById('otp-display').innerText = "0000";
-            showToast("OTP Reset to 0000");
+            fetchEmails(); showToast("List Cleared!");
         } catch (e) { }
     }
 
@@ -195,11 +150,18 @@
         try {
             await databases.createDocument(DB_ID, COL_ID, Appwrite.ID.unique(), { current_otp: mail });
             document.getElementById('emailInput').value = "";
-            fetchEmails();
-            showToast("Email Added Successfully!");
-        } catch (e) { showToast("Failed to add!"); }
+            fetchEmails(); showToast("Email Added!");
+        } catch (e) { showToast("Failed!"); }
     }
 
+    async function resetOTP() {
+        try {
+            await databases.updateDocument(DB_ID, COL_ID, 'live_sync', { current_otp: "0000", sender_name: "NONE" });
+            document.getElementById('otp-display').innerText = "0000"; showToast("Reset Done!");
+        } catch (e) { }
+    }
+
+    function handleAuthClick() { tokenClient.requestAccessToken({prompt: 'consent'}); }
     window.onload = initClient;
 </script>
 </body>
