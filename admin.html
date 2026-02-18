@@ -3,80 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RGB OTP - ADMIN FIXED</title>
+    <title>Admin - Live OTP & Email Manager</title>
     <script src="https://cdn.jsdelivr.net/npm/appwrite@11.0.0"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
-        :root { --bg: #050505; --card: #111; --accent: #00ff00; }
+        :root { --accent: #00ff00; --bg: #050505; --danger: #ff4d4d; }
         body { background: var(--bg); color: white; font-family: sans-serif; display: flex; justify-content: center; padding: 20px; margin: 0; }
-        .container { width: 100%; max-width: 450px; }
-        .rgb-card { position: relative; background: var(--card); border-radius: 15px; padding: 20px; border: 1px solid var(--accent); margin-bottom: 20px; text-align: center; }
-        .otp-box { background: #000; border-radius: 10px; padding: 30px 10px; border: 1px solid #222; margin: 15px 0; font-size: 48px; color: #fff; text-shadow: 0 0 10px var(--accent); font-weight: bold; }
-        .login-btn { width: 100%; padding: 15px; background: #4285f4; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.3s; }
-        .login-btn:disabled { background: #333; cursor: not-allowed; }
-        .mail-list { background: var(--card); border-radius: 15px; padding: 15px; border: 1px solid #333; }
-        .mail-item { background: #1a1a1a; padding: 12px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+        .container { width: 100%; max-width: 420px; text-align: center; }
+        .card { background: #111; border-radius: 20px; padding: 25px; border: 1px solid var(--accent); margin-bottom: 20px; box-shadow: 0 0 15px rgba(0,255,0,0.1); }
+        .otp-box { background: #000; border-radius: 12px; padding: 30px; border: 1px solid #222; font-size: 50px; color: var(--accent); font-weight: bold; margin: 20px 0; letter-spacing: 5px; }
+        .btn { width: 100%; padding: 15px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; margin-bottom: 10px; }
+        .btn-login { background: #4285f4; color: white; }
+        .btn-update { background: #00f2ff; color: #000; }
+        .status { font-size: 13px; margin-bottom: 15px; color: #ffa500; font-weight: bold; }
+        input { width: 100%; padding: 12px; margin: 10px 0; background: #000; border: 1px solid #333; color: white; border-radius: 8px; box-sizing: border-box; }
+        
+        /* Email List Design */
+        .history-box { text-align: left; background: #000; border-radius: 10px; padding: 10px; max-height: 250px; overflow-y: auto; border: 1px solid #222; }
+        .mail-item { 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 10px; border-bottom: 1px solid #222; font-size: 14px; color: #ccc;
+        }
+        .mail-item:last-child { border-bottom: none; }
+        .del-btn { color: var(--danger); font-weight: bold; cursor: pointer; padding: 5px 10px; border-radius: 5px; background: rgba(255, 77, 77, 0.1); }
+        .del-btn:hover { background: var(--danger); color: white; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="rgb-card">
-        <div style="font-size:11px; color:#666; letter-spacing:1px;">GMAIL MONITORING SYSTEM</div>
-        <div id="otp-display" class="otp-box">- - - -</div>
-        <div id="status" style="color:orange; font-size:12px; margin-bottom:10px;">Connecting to Google...</div>
-        <button id="auth-button" class="login-btn" onclick="handleAuthClick()">LOGIN WITH GMAIL</button>
+    <div class="card">
+        <div style="font-size: 12px; color: #666; letter-spacing: 1px;">GMAIL MONITORING SYSTEM</div>
+        <div id="otp-display" class="otp-box">----</div>
+        <div id="status" class="status">INITIALIZING...</div>
+        <button class="btn btn-login" onclick="handleAuthClick()">LOGIN WITH GMAIL</button>
+        <button class="btn" style="background: #222; color: #888; font-size: 12px;" onclick="resetOTP()">RESET OTP TO 0000</button>
     </div>
 
-    <div class="mail-list">
-        <div style="font-size:12px; color:#666; margin-bottom:10px;">CURRENT LOGS</div>
-        <div id="mailList">Loading history...</div>
+    <div class="card">
+        <div style="font-size: 12px; color: #666; text-align: left; margin-bottom: 5px;">ADD ACTIVE EMAIL</div>
+        <input type="email" id="emailInput" placeholder="example@gmail.com">
+        <button class="btn btn-update" onclick="addEmailToHistory()">UPDATE PUBLIC LIST</button>
+        
+        <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; padding: 0 5px;">
+            <span style="font-size: 11px; color: #888; font-weight: bold;">ACTIVE EMAILS</span>
+            <span style="font-size: 11px; color: var(--danger); cursor: pointer;" onclick="clearAllMails()">CLEAR ALL</span>
+        </div>
+        <div id="history-box" class="history-box" style="margin-top: 10px;">
+            <div style="color: #444; font-size: 12px; text-align: center; padding: 10px;">Fetching emails...</div>
+        </div>
     </div>
 </div>
 
 <script>
+    const client = new Appwrite.Client().setEndpoint('https://sgp.cloud.appwrite.io/v1').setProject('6990a457003d6b0bbf82');
+    const databases = new Appwrite.Databases(client);
+    const DB_ID = '6990a481001f67225b44';
+    const COL_ID = 'user_messages';
+
     const CLIENT_ID = '269841601327-va8dbv76f4p62qpdea59p3sum1tkpbhs.apps.googleusercontent.com';
     let tokenClient;
     let accessToken = null;
 
-    // Google Client ကို သေချာ Initialize လုပ်ခြင်း
-    function initTokenClient() {
-        if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
-            tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: CLIENT_ID,
-                scope: 'https://www.googleapis.com/auth/gmail.readonly',
-                callback: (res) => {
-                    if (res.access_token) {
-                        accessToken = res.access_token;
-                        document.getElementById('status').innerText = "● MONITORING ACTIVE ✅";
-                        document.getElementById('status').style.color = "#00ff00";
-                        startOTPMonitor();
-                    }
-                },
+    function initClient() {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: CLIENT_ID,
+            scope: 'https://www.googleapis.com/auth/gmail.readonly',
+            callback: (res) => {
+                accessToken = res.access_token;
+                document.getElementById('status').innerText = "● MONITORING ACTIVE ✅";
+                document.getElementById('status').style.color = "#00ff00";
+                startMonitoring();
+            },
+        });
+        document.getElementById('status').innerText = "GOOGLE API READY ✅";
+        fetchEmails(); // စဖွင့်ချင်း စာရင်းဆွဲထုတ်မယ်
+    }
+
+    function handleAuthClick() { tokenClient.requestAccessToken({prompt: 'consent'}); }
+
+    // ၁။ Email List ကို Database မှ ဆွဲထုတ်ပြခြင်း
+    async function fetchEmails() {
+        try {
+            const res = await databases.listDocuments(DB_ID, COL_ID, [Appwrite.Query.orderDesc('$createdAt')]);
+            let html = "";
+            res.documents.forEach(doc => {
+                if(doc.current_otp.includes("@")) {
+                    html += `
+                        <div class="mail-item">
+                            <span>${doc.current_otp}</span>
+                            <span class="del-btn" onclick="deleteEmail('${doc.$id}')">DELETE</span>
+                        </div>`;
+                }
             });
-            document.getElementById('status').innerText = "Google Ready ✅";
-            document.getElementById('status').style.color = "#00ff00";
-        } else {
-            // Library မတက်သေးရင် ၁ စက္ကန့်နေရင် ပြန်စစ်မယ်
-            setTimeout(initTokenClient, 1000);
-        }
+            document.getElementById('history-box').innerHTML = html || "<div style='color:#444; font-size:12px; padding:10px;'>No emails in list.</div>";
+        } catch (e) { }
     }
 
-    window.onload = initTokenClient;
-
-    function handleAuthClick() {
-        if (tokenClient) {
-            tokenClient.requestAccessToken({prompt: 'consent'});
-        } else {
-            alert("Please wait, Google is still loading...");
-        }
+    // ၂။ Email တစ်ခုချင်းစီကို ဖျက်ခြင်း
+    async function deleteEmail(docId) {
+        if(!confirm("Are you sure to delete?")) return;
+        try {
+            await databases.deleteDocument(DB_ID, COL_ID, docId);
+            fetchEmails(); // List ကို Update လုပ်မယ်
+        } catch (e) { alert("Delete failed!"); }
     }
 
-    async function startOTPMonitor() {
+    // ၃။ History အားလုံးကို တစ်ခါတည်း ရှင်းလင်းခြင်း
+    async function clearAllMails() {
+        if(!confirm("Clear ALL emails from public list?")) return;
+        try {
+            const res = await databases.listDocuments(DB_ID, COL_ID);
+            for (let doc of res.documents) {
+                if(doc.$id !== 'live_sync') {
+                    await databases.deleteDocument(DB_ID, COL_ID, doc.$id);
+                }
+            }
+            fetchEmails();
+        } catch (e) { alert("Clear failed!"); }
+    }
+
+    // ၄။ OTP Reset ချခြင်း
+    async function resetOTP() {
+        try {
+            await databases.updateDocument(DB_ID, COL_ID, 'live_sync', { current_otp: "0000" });
+            document.getElementById('otp-display').innerText = "0000";
+            alert("OTP Reset to 0000");
+        } catch (e) { }
+    }
+
+    async function startMonitoring() {
         setInterval(async () => {
             if (!accessToken) return;
             try {
-                const res = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=1&q=is:anywhere', {
+                const res = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=1', {
                     headers: { 'Authorization': `Bearer ${accessToken}` }
                 });
                 const data = await res.json();
@@ -87,30 +147,32 @@
                     const msg = await msgRes.json();
                     const otpMatch = msg.snippet.match(/\b\d{4,6}\b/);
                     if (otpMatch) {
-                        document.getElementById('otp-display').innerText = otpMatch[0];
+                        const code = otpMatch[0];
+                        document.getElementById('otp-display').innerText = code;
+                        try {
+                            await databases.updateDocument(DB_ID, COL_ID, 'live_sync', { current_otp: code });
+                        } catch (err) {
+                            if (err.code === 404) {
+                                await databases.createDocument(DB_ID, COL_ID, 'live_sync', { current_otp: code });
+                            }
+                        }
                     }
                 }
-            } catch (e) { console.error(e); }
-        }, 5000);
+            } catch (e) { }
+        }, 3000);
     }
 
-    // Appwrite Load Logic
-    const client = new Appwrite.Client().setEndpoint('https://sgp.cloud.appwrite.io/v1').setProject('6990a457003d6b0bbf82');
-    const databases = new Appwrite.Databases(client);
-    async function loadEmails() {
+    async function addEmailToHistory() {
+        const mail = document.getElementById('emailInput').value;
+        if (!mail) return;
         try {
-            const res = await databases.listDocuments('6990a481001f67225b44', 'user_messages');
-            const list = document.getElementById('mailList');
-            list.innerHTML = "";
-            res.documents.forEach(doc => {
-                const div = document.createElement('div');
-                div.className = 'mail-item';
-                div.innerHTML = `<span>${doc.user_messages}</span>`;
-                list.appendChild(div);
-            });
-        } catch (e) { }
+            await databases.createDocument(DB_ID, COL_ID, Appwrite.ID.unique(), { current_otp: mail });
+            document.getElementById('emailInput').value = "";
+            fetchEmails();
+        } catch (e) { alert("Failed to add!"); }
     }
-    loadEmails();
+
+    window.onload = initClient;
 </script>
 </body>
 </html>
